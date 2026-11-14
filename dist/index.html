@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wallpaper Clock</title>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-minimal">
+
+  <!-- Edit Mode Floating Banner -->
+  <div id="editModeBanner" class="edit-mode-banner hidden">
+    <div class="banner-content">
+      <span class="banner-badge">EDIT MODE</span>
+      <span class="banner-text">Drag widgets to reposition on your wallpaper. Press <kbd>Ctrl+Alt+C</kbd> or click Done when finished.</span>
+      <button id="btnExitEdit" class="btn-banner-done">Done</button>
+      <button id="btnOpenSettingsFromBanner" class="btn-banner-settings">Settings</button>
+    </div>
+  </div>
+
+  <!-- Stage Canvas / Main Desktop Wrapper -->
+  <div id="stage" class="stage">
+
+    <!-- Date Element -->
+    <div id="widgetDate" class="widget widget-date" data-id="date">
+      <div class="drag-handle"><span class="drag-icon">⋮⋮</span> Date</div>
+      <div id="dateText" class="date-text">SATURDAY, 14 NOVEMBER 2026</div>
+    </div>
+
+    <!-- Main Clock Element (Digital / Analog) -->
+    <div id="widgetClock" class="widget widget-clock" data-id="clock">
+      <div class="drag-handle"><span class="drag-icon">⋮⋮</span> Clock</div>
+
+      <!-- Digital Display -->
+      <div id="digitalClock" class="digital-clock">
+        <span id="clockHours" class="time-part">12</span>
+        <span id="clockColon1" class="time-colon">:</span>
+        <span id="clockMinutes" class="time-part">00</span>
+        <span id="clockSecondsWrapper" class="seconds-wrapper">
+          <span id="clockColon2" class="time-colon">:</span>
+          <span id="clockSeconds" class="time-seconds">00</span>
+        </span>
+        <span id="clockAmPm" class="time-ampm">AM</span>
+      </div>
+
+      <!-- Analog Display -->
+      <div id="analogClock" class="analog-clock hidden">
+        <svg viewBox="0 0 240 240" class="analog-svg">
+          <circle cx="120" cy="120" r="114" class="dial-circle"/>
+          <g id="dialTicks" class="dial-ticks"></g>
+          <line id="hourHand" x1="120" y1="120" x2="120" y2="60" class="hand hand-hour"/>
+          <line id="minuteHand" x1="120" y1="120" x2="120" y2="35" class="hand hand-minute"/>
+          <line id="secondHand" x1="120" y1="130" x2="120" y2="28" class="hand hand-second"/>
+          <circle cx="120" cy="120" r="5" class="center-pivot"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Dual Clock Element -->
+    <div id="widgetDual" class="widget widget-dual" data-id="dual">
+      <div class="drag-handle"><span class="drag-icon">⋮⋮</span> Dual Clock</div>
+      <div id="dualLabel" class="dual-label">LONDON</div>
+      <div id="dualTime" class="dual-time">00:00</div>
+    </div>
+
+    <!-- Widget Row / Container for Cards (Stopwatch, Pomodoro, etc.) -->
+    <div id="cardWidgetsContainer" class="card-widgets-container">
+
+      <!-- Stopwatch Card -->
+      <div id="widgetStopwatch" class="widget widget-card" data-id="stopwatch">
+        <div class="drag-handle"><span class="drag-icon">⋮⋮</span> Stopwatch</div>
+        <div class="card-header">
+          <span class="card-title">STOPWATCH</span>
+        </div>
+        <div id="swTime" class="sw-time">00:00.0</div>
+        <div class="widget-controls">
+          <button id="swBtnStart" class="btn btn-primary">Start</button>
+          <button id="swBtnLap" class="btn btn-secondary" disabled>Lap</button>
+          <button id="swBtnReset" class="btn btn-secondary">Reset</button>
+        </div>
+        <div id="swLapList" class="sw-lap-list hidden"></div>
+      </div>
+
+      <!-- Pomodoro Card -->
+      <div id="widgetPomodoro" class="widget widget-card" data-id="pomodoro">
+        <div class="drag-handle"><span class="drag-icon">⋮⋮</span> Pomodoro</div>
+        <div class="card-header">
+          <span id="pomModeTag" class="card-badge">FOCUS</span>
+          <span id="pomSessionCount" class="session-text">Session #1</span>
+        </div>
+        <div id="pomTime" class="pom-time">25:00</div>
+        <div class="pom-progress-bar-wrap">
+          <div id="pomProgressBar" class="pom-progress-bar"></div>
+        </div>
+        <div class="widget-controls">
+          <button id="pomBtnStart" class="btn btn-primary">Start</button>
+          <button id="pomBtnSkip" class="btn btn-secondary">Skip</button>
+          <button id="pomBtnReset" class="btn btn-secondary">Reset</button>
+        </div>
+      </div>
+
+      <!-- Countdown Card (Optional) -->
+      <div id="widgetCountdown" class="widget widget-card hidden" data-id="countdown">
+        <div class="drag-handle"><span class="drag-icon">⋮⋮</span> Countdown</div>
+        <div class="card-header">
+          <span class="card-title">COUNTDOWN</span>
+        </div>
+        <div id="cdTime" class="cd-time">10:00</div>
+        <div class="widget-controls">
+          <button id="cdBtnStart" class="btn btn-primary">Start</button>
+          <button id="cdBtnReset" class="btn btn-secondary">Reset</button>
+        </div>
+      </div>
+
+      <!-- Alarm Card (Optional) -->
+      <div id="widgetAlarm" class="widget widget-card hidden" data-id="alarm">
+        <div class="drag-handle"><span class="drag-icon">⋮⋮</span> Alarm</div>
+        <div class="card-header">
+          <span class="card-title">ALARM</span>
+          <span id="alarmStatusBadge" class="card-badge badge-dim">OFF</span>
+        </div>
+        <div id="alarmTimeDisplay" class="alarm-time">07:30 AM</div>
+        <div id="alarmLabelDisplay" class="alarm-label">Wake Up</div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

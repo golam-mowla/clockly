@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wallpaper Clock - Settings</title>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="settings-shell">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="app-brand">
+        <div class="brand-icon">⏱</div>
+        <div class="brand-meta">
+          <span class="brand-title">Wallpaper Clock</span>
+          <span class="brand-version">v1.0.0</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="general">
+          <span class="nav-icon">⚙</span> General
+        </button>
+        <button class="nav-item" data-tab="clock">
+          <span class="nav-icon">🕒</span> Clock
+        </button>
+        <button class="nav-item" data-tab="dual">
+          <span class="nav-icon">🌍</span> Dual Clock
+        </button>
+        <button class="nav-item" data-tab="stopwatch">
+          <span class="nav-icon">⏱</span> Stopwatch
+        </button>
+        <button class="nav-item" data-tab="pomodoro">
+          <span class="nav-icon">🍅</span> Pomodoro
+        </button>
+        <button class="nav-item" data-tab="appearance">
+          <span class="nav-icon">🎨</span> Appearance
+        </button>
+        <button class="nav-item" data-tab="position">
+          <span class="nav-icon">📐</span> Position & Layout
+        </button>
+        <button class="nav-item" data-tab="about">
+          <span class="nav-icon">ℹ</span> About
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="btnEnterEditMode" class="btn-action btn-edit-mode">
+          <span>✨</span> Drag & Reposition
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content-panel">
+
+      <!-- ================= 1. GENERAL TAB ================= -->
+      <section id="tab-general" class="tab-pane active">
+        <h2 class="pane-title">General Settings</h2>
+        <p class="pane-subtitle">Manage system behavior, Windows startup, and configuration backup.</p>
+
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Run at Windows Startup</label>
+              <span class="setting-desc">Launch Wallpaper Clock silently in the tray when your PC boots</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkAutostart">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Click-through Desktop Mode</label>
+              <span class="setting-desc">Pass all mouse clicks through to desktop icons and wallpaper</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkClickThrough" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Wallpaper Layer Embedding</label>
+              <span class="setting-desc">WorkerW desktop layer (Behind icons, above wallpaper)</span>
+            </div>
+            <span class="badge badge-success">Active (WorkerW)</span>
+          </div>
+        </div>
+
+        <h3 class="group-header">Backup & Synchronization</h3>
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Configuration Storage</label>
+              <span class="setting-desc" id="appDataPathText">AppData/Roaming/WallpaperClock/settings.json</span>
+            </div>
+            <div class="button-group">
+              <button id="btnExportSettings" class="btn-secondary">Export JSON</button>
+              <button id="btnImportSettings" class="btn-secondary">Import JSON</button>
+              <input type="file" id="fileImportInput" accept=".json" style="display:none">
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Reset Defaults</label>
+              <span class="setting-desc">Revert all appearance and clock settings back to original defaults</span>
+            </div>
+            <button id="btnResetSettings" class="btn-danger">Reset to Defaults</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2. CLOCK TAB ================= -->
+      <section id="tab-clock" class="tab-pane">
+        <h2 class="pane-title">Clock Settings</h2>
+        <p class="pane-subtitle">Format, time display style, seconds, and date presentation.</p>
+
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Show Main Clock</label>
+              <span class="setting-desc">Toggle the central time display on your wallpaper</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkShowClock" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Clock Display Style</label>
+              <span class="setting-desc">Switch between digital numbers and a sleek analog dial</span>
+            </div>
+            <div class="segment-control">
+              <button class="seg-btn active" data-val="digital" id="btnStyleDigital">Digital</button>
+              <button class="seg-btn" data-val="analog" id="btnStyleAnalog">Analog</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Time Format</label>
+              <span class="setting-desc">12-hour (AM/PM) or military 24-hour mode</span>
+            </div>
+            <div class="segment-control">
+              <button class="seg-btn active" data-val="12" id="btnFmt12">12 Hour</button>
+              <button class="seg-btn" data-val="24" id="btnFmt24">24 Hour</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Show AM / PM Tag</label>
+              <span class="setting-desc">Display AM or PM suffix in 12-hour mode</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkShowAmPm" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Show Seconds</label>
+              <span class="setting-desc">Display live ticking seconds</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkShowSeconds" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Main Clock Scale</label>
+              <span class="setting-desc">Adjust the size of the clock display</span>
+            </div>
+            <div class="slider-control">
+              <input type="range" id="rngClockScale" min="0.4" max="2.0" step="0.05" value="1.0">
+              <span class="slider-val" id="valClockScale">1.0x</span>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="group-header">Date Settings</h3>
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Show Date</label>
+              <span class="setting-desc">Display the current calendar date</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkShowDate" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Show Weekday</label>
+              <span class="setting-desc">Include the day of week (e.g. SATURDAY)</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkShowWeekday" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Date Format</label>
+              <span class="setting-desc">Select how the date numbers and month appear</span>
+            </div>
+            <select id="selDateFormat" class="select-box">
+              <option value="DD MMMM YYYY">14 NOVEMBER 2026</option>
+              <option value="YYYY-MM-DD">2026-11-14 (ISO)</option>
+              <option value="MM/DD/YYYY">11/14/2026 (US)</option>
+              <option value="DD/MM/YYYY">14/11/2026 (EU/UK)</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3. DUAL CLOCK TAB ================= -->
+      <section id="tab-dual" class="tab-pane">
+        <h2 class="pane-title">Dual Clock</h2>
+        <p class="pane-subtitle">Keep track of a second timezone anywhere in the world.</p>
+
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Enable Dual Clock</label>
+              <span class="setting-desc">Show a secondary timezone clock on the desktop</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkShowDual" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Custom City / Timezone Label</label>
+              <span class="setting-desc">Label shown above the secondary clock</span>
+            </div>
+            <input type="text" id="txtDualLabel" class="input-text" value="LONDON" placeholder="e.g. LONDON, TOKYO, DHAKA">
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Search Timezone</label>
+              <span class="setting-desc">Select target world timezone</span>
+            </div>
+            <select id="selDualTimezone" class="select-box">
+              <option value="Europe/London">London (GMT / BST)</option>
+              <option value="Asia/Dhaka">Dhaka (UTC+6)</option>
+              <option value="America/New_York">New York (EST / EDT)</option>
+              <option value="America/Los_Angeles">Los Angeles / Pacific (PST / PDT)</option>
+              <option value="America/Chicago">Chicago / Central (CST / CDT)</option>
+              <option value="Asia/Tokyo">Tokyo (JST, UTC+9)</option>
+              <option value="Europe/Paris">Paris / Berlin (CET / CEST)</option>
+              <option value="Asia/Dubai">Dubai (GST, UTC+4)</option>
+              <option value="Asia/Singapore">Singapore (SGT, UTC+8)</option>
+              <option value="Australia/Sydney">Sydney (AEST / AEDT)</option>
+              <option value="UTC">UTC (Coordinated Universal Time)</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Dual Clock 12h/24h</label>
+              <span class="setting-desc">Format for the dual clock display</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkDualHour12" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4. STOPWATCH TAB ================= -->
+      <section id="tab-stopwatch" class="tab-pane">
+        <h2 class="pane-title">Stopwatch</h2>
+        <p class="pane-subtitle">Precision desktop stopwatch with millisecond timing and laps.</p>
+
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Enable Stopwatch</label>
+              <span class="setting-desc">Show the stopwatch widget on your wallpaper</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkShowStopwatch" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Frosted Glass Background</label>
+              <span class="setting-desc">Wrap stopwatch in a translucent glassmorphism card</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkStopwatchGlass" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 5. POMODORO TAB ================= -->
+      <section id="tab-pomodoro" class="tab-pane">
+        <h2 class="pane-title">Pomodoro Timer</h2>
+        <p class="pane-subtitle">Boost focus with customizable intervals, auto-cycle, and audio alerts.</p>
+
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Enable Pomodoro Widget</label>
+              <span class="setting-desc">Show Pomodoro card on desktop</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkShowPomodoro" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Focus Duration</label>
+              <span class="setting-desc">Work interval in minutes (default: 25)</span>
+            </div>
+            <div class="number-input-wrap">
+              <input type="number" id="numPomFocus" class="input-number" min="1" max="90" value="25">
+              <span>min</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Short Break Duration</label>
+              <span class="setting-desc">Rest interval in minutes (default: 5)</span>
+            </div>
+            <div class="number-input-wrap">
+              <input type="number" id="numPomShort" class="input-number" min="1" max="30" value="5">
+              <span>min</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Long Break Duration</label>
+              <span class="setting-desc">Extended break in minutes (default: 15)</span>
+            </div>
+            <div class="number-input-wrap">
+              <input type="number" id="numPomLong" class="input-number" min="1" max="60" value="15">
+              <span>min</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Auto-Cycle Sessions</label>
+              <span class="setting-desc">Automatically transition to breaks and focus cycles</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkPomAutoCycle" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Sound Chime on Finish</label>
+              <span class="setting-desc">Play gentle harmonic bell chime when timer ends</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkPomSound" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Windows Native Notification</label>
+              <span class="setting-desc">Show notification banner in Windows Action Center</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkPomNotification" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 6. APPEARANCE TAB ================= -->
+      <section id="tab-appearance" class="tab-pane">
+        <h2 class="pane-title">Appearance & Themes</h2>
+        <p class="pane-subtitle">Customize fonts, colors, glows, glass cards, and presets.</p>
+
+        <h3 class="group-header">Theme Presets</h3>
+        <div class="theme-grid">
+          <div class="theme-card active" data-theme="theme-minimal">
+            <div class="theme-preview minimal">12:00</div>
+            <span class="theme-name">Minimal White</span>
+          </div>
+          <div class="theme-card" data-theme="theme-neon">
+            <div class="theme-preview neon">12:00</div>
+            <span class="theme-name">Cyberpunk Neon</span>
+          </div>
+          <div class="theme-card" data-theme="theme-warm">
+            <div class="theme-preview warm">12:00</div>
+            <span class="theme-name">Warm Sunset</span>
+          </div>
+          <div class="theme-card" data-theme="theme-dark">
+            <div class="theme-preview dark">12:00</div>
+            <span class="theme-name">Dark Glass</span>
+          </div>
+          <div class="theme-card" data-theme="theme-matrix">
+            <div class="theme-preview matrix">12:00</div>
+            <span class="theme-name">Emerald Matrix</span>
+          </div>
+          <div class="theme-card" data-theme="theme-ice">
+            <div class="theme-preview ice">12:00</div>
+            <span class="theme-name">Nordic Ice</span>
+          </div>
+          <div class="theme-card" data-theme="theme-gold">
+            <div class="theme-preview gold">12:00</div>
+            <span class="theme-name">Golden Luxury</span>
+          </div>
+        </div>
+
+        <h3 class="group-header">Typography & Fonts</h3>
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Font Family</label>
+              <span class="setting-desc">Bundled offline fonts or installed system font</span>
+            </div>
+            <select id="selFontFamily" class="select-box">
+              <option value="Inter">Inter (Clean modern sans)</option>
+              <option value="JetBrains Mono">JetBrains Mono (Monospace)</option>
+              <option value="Poppins">Poppins (Geometric rounded)</option>
+              <option value="Orbitron">Orbitron (Sci-fi futuristic)</option>
+              <option value="Playfair Display">Playfair Display (Serif)</option>
+              <option value="Raleway">Raleway (Thin & elegant)</option>
+              <option value="Custom">Custom System Font...</option>
+            </select>
+          </div>
+
+          <div class="setting-row" id="rowCustomFont" style="display:none">
+            <div class="setting-info">
+              <label class="setting-label">Custom Installed Font Name</label>
+              <span class="setting-desc">Type any font installed on your Windows PC</span>
+            </div>
+            <input type="text" id="txtCustomFont" class="input-text" placeholder="e.g. Segoe UI, Consolas, Georgia">
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Font Weight</label>
+              <span class="setting-desc">Light, Regular, Medium, or Bold</span>
+            </div>
+            <select id="selFontWeight" class="select-box">
+              <option value="200">200 - Ultra Light</option>
+              <option value="300">300 - Light</option>
+              <option value="400" selected>400 - Regular</option>
+              <option value="600">600 - Semi Bold</option>
+              <option value="700">700 - Bold</option>
+              <option value="900">900 - Black</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Letter Spacing</label>
+              <span class="setting-desc">Adjust distance between characters</span>
+            </div>
+            <div class="slider-control">
+              <input type="range" id="rngLetterSpacing" min="-2" max="10" step="0.5" value="0">
+              <span class="slider-val" id="valLetterSpacing">0px</span>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="group-header">Color & Shadows</h3>
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Primary Text Color</label>
+              <span class="setting-desc">Choose custom clock and text color</span>
+            </div>
+            <div class="color-picker-wrap">
+              <input type="color" id="colTextColor" value="#ffffff" class="input-color">
+              <span id="colTextColorHex">#ffffff</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Text Opacity</label>
+              <span class="setting-desc">Overall opacity of wallpaper clock widgets</span>
+            </div>
+            <div class="slider-control">
+              <input type="range" id="rngTextOpacity" min="20" max="100" step="5" value="100">
+              <span class="slider-val" id="valTextOpacity">100%</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Text Shadow / Wallpaper Contrast</label>
+              <span class="setting-desc">Adds a subtle dark shadow for readability over bright wallpapers</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkTextShadow" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Glass Card Blur</label>
+              <span class="setting-desc">Frosted glass backdrop-filter strength</span>
+            </div>
+            <div class="slider-control">
+              <input type="range" id="rngCardBlur" min="0" max="32" step="2" value="16">
+              <span class="slider-val" id="valCardBlur">16px</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 7. POSITION TAB ================= -->
+      <section id="tab-position" class="tab-pane">
+        <h2 class="pane-title">Position & Layout</h2>
+        <p class="pane-subtitle">Choose anchor presets or freely drag elements across your monitors.</p>
+
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Layout Preset</label>
+              <span class="setting-desc">Snap clock layout to predefined desktop locations</span>
+            </div>
+            <select id="selLayoutPreset" class="select-box">
+              <option value="center">Center of Screen</option>
+              <option value="top-left">Top-Left Corner</option>
+              <option value="top-right">Top-Right Corner</option>
+              <option value="bottom-left">Bottom-Left Corner</option>
+              <option value="bottom-right">Bottom-Right Corner</option>
+              <option value="custom">Custom (Free Drag)</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Global Scale Factor</label>
+              <span class="setting-desc">Scale all clock widgets uniformly</span>
+            </div>
+            <div class="slider-control">
+              <input type="range" id="rngGlobalScale" min="0.5" max="1.8" step="0.05" value="1.0">
+              <span class="slider-val" id="valGlobalScale">1.0x</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Interactive Drag & Drop Mode</label>
+              <span class="setting-desc">Temporarily make desktop interactive to drag widgets anywhere</span>
+            </div>
+            <button id="btnLaunchEditMode" class="btn-primary">Enter Drag Mode</button>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Reset Widget Positions</label>
+              <span class="setting-desc">Clear custom coordinates and restore preset layout</span>
+            </div>
+            <button id="btnResetPositions" class="btn-secondary">Reset Positions</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 8. ABOUT TAB ================= -->
+      <section id="tab-about" class="tab-pane">
+        <h2 class="pane-title">About Wallpaper Clock</h2>
+        <p class="pane-subtitle">Lightweight, high-performance desktop wallpaper clock for Windows.</p>
+
+        <div class="about-card">
+          <div class="about-icon">⏱</div>
+          <h3>Wallpaper Clock</h3>
+          <p class="about-sub">Version 1.0.0 (Windows x64 Native)</p>
+          <div class="about-specs">
+            <div class="spec-item">
+              <span class="spec-label">Backend</span>
+              <span class="spec-val">Rust (Tauri v2)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Layer Tech</span>
+              <span class="spec-val">Windows WorkerW / HWND_BOTTOM</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Idle RAM</span>
+              <span class="spec-val">&lt; 50 MB</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Idle CPU</span>
+              <span class="spec-val">~0.0%</span>
+            </div>
+          </div>
+          <p class="about-desc">
+            Embedded directly into the Windows desktop wallpaper surface below desktop icons. Fully click-through, hardware accelerated, zero busy loops, and pauses automatically when fullscreen games run.
+          </p>
+          <div class="shortcuts-box">
+            <h4>Keyboard Shortcuts</h4>
+            <div class="shortcut-row">
+              <kbd>Ctrl + Alt + C</kbd>
+              <span>Toggle Interactive / Edit Mode</span>
+            </div>
+            <div class="shortcut-row">
+              <kbd>Esc</kbd>
+              <span>Exit Edit Mode</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>
