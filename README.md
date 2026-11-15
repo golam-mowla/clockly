@@ -1,4 +1,4 @@
-# Wallpaper Clock ⏱
+# Clockly ⏱
 
 > A fast, lightweight Windows desktop clock embedded seamlessly into your desktop wallpaper. Built with **Tauri v2** + **Rust** backend and vanilla HTML5 / CSS3 / JavaScript frontend.
 
@@ -12,7 +12,7 @@
 
 ## 🌟 Overview
 
-**Wallpaper Clock** looks and feels like it's painted directly onto your desktop wallpaper. It sits **ABOVE** the wallpaper image but **BELOW** desktop icons and normal application windows, using the Windows **WorkerW** desktop layering technique.
+**Clockly** looks and feels like it's painted directly onto your desktop wallpaper. It sits **ABOVE** the wallpaper image but **BELOW** desktop icons and normal application windows, using the Windows **WorkerW** desktop layering technique.
 
 It is 100% click-through by default so desktop icons, folders, and right-click menus function completely normally. Whenever you want to customize settings or rearrange widgets, press <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>C</kbd> or open the tray icon.
 
@@ -71,7 +71,7 @@ It is 100% click-through by default so desktop icons, folders, and right-click m
 - **Run at Windows Startup**: Auto-launches silently to the system tray (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
 - **Single Instance**: Protected via Win32 named mutex (`CreateMutexW`).
 - **Fullscreen App Detection**: Automatically detects when a fullscreen game or video player is active and throttles rendering to save maximum CPU and battery.
-- **Local AppData Persistence**: Saves settings as clean JSON in `%APPDATA%\WallpaperClock\settings.json`.
+- **Local AppData Persistence**: Saves settings as clean JSON in `%APPDATA%\Clockly\settings.json`.
 - **Export & Import JSON**: Easily backup or share configurations.
 
 ---
@@ -90,7 +90,7 @@ It is 100% click-through by default so desktop icons, folders, and right-click m
 
 ## 📦 Prerequisites to Build from Source
 
-To compile Wallpaper Clock yourself on Windows:
+To compile Clockly yourself on Windows:
 
 1. **Rust**:
    Install via [rustup.rs](https://rustup.rs/):
@@ -111,8 +111,8 @@ To compile Wallpaper Clock yourself on Windows:
 
 Clone the repository:
 ```bash
-git clone https://github.com/golam-mowla/wallpaper-clock.git
-cd wallpaper-clock
+git clone https://github.com/golam-mowla/clockly.git
+cd clockly
 ```
 
 Install frontend CLI tooling:
@@ -128,7 +128,7 @@ cd src-tauri
 cargo build --release
 ```
 The standalone binary will be generated at:
-`src-tauri/target/release/wallpaper-clock.exe`
+`src-tauri/target/release/clockly.exe`
 
 ### Build Complete Installer
 ```bash

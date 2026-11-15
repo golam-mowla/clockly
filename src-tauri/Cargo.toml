@@ -1,8 +1,8 @@
 [package]
-name = "wallpaper-clock"
+name = "clockly"
 version = "1.0.0"
-description = "Wallpaper Clock - Standalone desktop wallpaper clock for Windows"
-authors = ["Wallpaper Clock Team"]
+description = "Clockly - Standalone desktop wallpaper clock for Windows"
+authors = ["Clockly Team"]
 edition = "2024"
 rust-version = "1.90"
 

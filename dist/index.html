@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wallpaper Clock</title>
+  <title>Clockly</title>
   <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -101,13 +101,25 @@
       </div>
 
       <!-- Countdown Card (Optional) -->
-      <div id="widgetCountdown" class="widget widget-card hidden" data-id="countdown">
+      <div id="widgetCountdown" class="widget widget-card widget-countdown hidden" data-id="countdown">
         <div class="drag-handle"><span class="drag-icon">⋮⋮</span> Countdown</div>
-        <div class="card-header">
-          <span class="card-title">COUNTDOWN</span>
+        <div class="cd-top">
+          <svg id="cdHourglass" class="hg" viewBox="0 0 64 64" aria-hidden="true">
+<defs><clipPath id="hgMain"><path d="M18 8 H46 V14 C46 24 37 29 33.5 32 C37 35 46 40 46 50 V56 H18 V50 C18 40 27 35 30.5 32 C27 29 18 24 18 14 Z"/></clipPath>
+<linearGradient id="hgMaing" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fcd34d"/><stop offset="1" stop-color="#f59e0b"/></linearGradient></defs>
+<g class="hg-body"><path class="hg-glass" d="M18 8 H46 V14 C46 24 37 29 33.5 32 C37 35 46 40 46 50 V56 H18 V50 C18 40 27 35 30.5 32 C27 29 18 24 18 14 Z"/>
+<g clip-path="url(#hgMain)"><rect class="hg-sand-top" x="18" y="8" width="28" height="24" fill="url(#hgMaing)"/><rect class="hg-sand-bot" x="18" y="32" width="28" height="24" fill="url(#hgMaing)"/><line class="hg-stream" x1="32" y1="31" x2="32" y2="56"/></g>
+<rect class="hg-cap" x="13" y="4" width="38" height="5" rx="2.5"/><rect class="hg-cap" x="13" y="55" width="38" height="5" rx="2.5"/></g></svg>
+          <div class="cd-meta">
+            <span id="cdLabel" class="card-title">COUNTDOWN</span>
+            <span id="cdSub" class="cd-sub">Ready</span>
+          </div>
         </div>
         <div id="cdTime" class="cd-time">10:00</div>
-        <div class="widget-controls">
+        <div class="pom-progress-bar-wrap">
+          <div id="cdProgressBar" class="pom-progress-bar cd-progress"></div>
+        </div>
+        <div id="cdControls" class="widget-controls">
           <button id="cdBtnStart" class="btn btn-primary">Start</button>
           <button id="cdBtnReset" class="btn btn-secondary">Reset</button>
         </div>

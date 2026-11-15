@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wallpaper Clock - Settings</title>
+  <title>Clockly - Settings</title>
   <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="stylesheet" href="settings.css">
 </head>
@@ -13,9 +13,9 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <div class="app-brand">
-        <div class="brand-icon">⏱</div>
+        <div class="brand-icon"><img src="logo.png" alt="Clockly" style="width:100%;height:100%;border-radius:inherit;display:block"></div>
         <div class="brand-meta">
-          <span class="brand-title">Wallpaper Clock</span>
+          <span class="brand-title">Clockly</span>
           <span class="brand-version">v1.0.0</span>
         </div>
       </div>
@@ -35,6 +35,14 @@
         </button>
         <button class="nav-item" data-tab="pomodoro">
           <span class="nav-icon">🍅</span> Pomodoro
+        </button>
+        <button class="nav-item" data-tab="countdown">
+          <span class="nav-icon"><svg class="hg" viewBox="0 0 64 64" aria-hidden="true">
+<defs><clipPath id="hgNav"><path d="M18 8 H46 V14 C46 24 37 29 33.5 32 C37 35 46 40 46 50 V56 H18 V50 C18 40 27 35 30.5 32 C27 29 18 24 18 14 Z"/></clipPath>
+<linearGradient id="hgNavg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fcd34d"/><stop offset="1" stop-color="#f59e0b"/></linearGradient></defs>
+<g class="hg-body"><path class="hg-glass" d="M18 8 H46 V14 C46 24 37 29 33.5 32 C37 35 46 40 46 50 V56 H18 V50 C18 40 27 35 30.5 32 C27 29 18 24 18 14 Z"/>
+<g clip-path="url(#hgNav)"><rect class="hg-sand-top" x="18" y="8" width="28" height="24" fill="url(#hgNavg)"/><rect class="hg-sand-bot" x="18" y="32" width="28" height="24" fill="url(#hgNavg)"/><line class="hg-stream" x1="32" y1="31" x2="32" y2="56"/></g>
+<rect class="hg-cap" x="13" y="4" width="38" height="5" rx="2.5"/><rect class="hg-cap" x="13" y="55" width="38" height="5" rx="2.5"/></g></svg></span> Countdown
         </button>
         <button class="nav-item" data-tab="appearance">
           <span class="nav-icon">🎨</span> Appearance
@@ -66,7 +74,7 @@
           <div class="setting-row">
             <div class="setting-info">
               <label class="setting-label">Run at Windows Startup</label>
-              <span class="setting-desc">Launch Wallpaper Clock silently in the tray when your PC boots</span>
+              <span class="setting-desc">Launch Clockly silently in the tray when your PC boots</span>
             </div>
             <label class="toggle">
               <input type="checkbox" id="chkAutostart">
@@ -99,7 +107,7 @@
           <div class="setting-row">
             <div class="setting-info">
               <label class="setting-label">Configuration Storage</label>
-              <span class="setting-desc" id="appDataPathText">AppData/Roaming/WallpaperClock/settings.json</span>
+              <span class="setting-desc" id="appDataPathText">AppData/Roaming/Clockly/settings.json</span>
             </div>
             <div class="button-group">
               <button id="btnExportSettings" class="btn-secondary">Export JSON</button>
@@ -403,6 +411,116 @@
         </div>
       </section>
 
+      <!-- ================= COUNTDOWN TAB ================= -->
+      <section id="tab-countdown" class="tab-pane">
+        <div class="cd-hero">
+          <button id="btnCdHero" class="cd-hero-icon" title="Click me"><svg class="hg" viewBox="0 0 64 64" aria-hidden="true">
+<defs><clipPath id="hgHero"><path d="M18 8 H46 V14 C46 24 37 29 33.5 32 C37 35 46 40 46 50 V56 H18 V50 C18 40 27 35 30.5 32 C27 29 18 24 18 14 Z"/></clipPath>
+<linearGradient id="hgHerog" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fcd34d"/><stop offset="1" stop-color="#f59e0b"/></linearGradient></defs>
+<g class="hg-body"><path class="hg-glass" d="M18 8 H46 V14 C46 24 37 29 33.5 32 C37 35 46 40 46 50 V56 H18 V50 C18 40 27 35 30.5 32 C27 29 18 24 18 14 Z"/>
+<g clip-path="url(#hgHero)"><rect class="hg-sand-top" x="18" y="8" width="28" height="24" fill="url(#hgHerog)"/><rect class="hg-sand-bot" x="18" y="32" width="28" height="24" fill="url(#hgHerog)"/><line class="hg-stream" x1="32" y1="31" x2="32" y2="56"/></g>
+<rect class="hg-cap" x="13" y="4" width="38" height="5" rx="2.5"/><rect class="hg-cap" x="13" y="55" width="38" height="5" rx="2.5"/></g></svg></button>
+          <div>
+            <h2 class="pane-title">Countdown</h2>
+            <p class="pane-subtitle">Set a time and watch it count down on your wallpaper. <span class="cd-hero-hint">(Tap the hourglass!)</span></p>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Enable Countdown Widget</label>
+              <span class="setting-desc">Show the countdown card on your desktop</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkShowCountdown">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Countdown Name</label>
+              <span class="setting-desc">Shown on the card (e.g. Exam, Eid, Launch)</span>
+            </div>
+            <input type="text" id="txtCdLabel" class="input-text" maxlength="24" placeholder="Countdown">
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Mode</label>
+              <span class="setting-desc">Count down a duration, or until a specific date &amp; time</span>
+            </div>
+            <div class="segment-control">
+              <button class="seg-btn active" id="btnCdModeDur">Duration</button>
+              <button class="seg-btn" id="btnCdModeTarget">Until Date/Time</button>
+            </div>
+          </div>
+
+          <div class="setting-row" id="rowCdDuration">
+            <div class="setting-info">
+              <label class="setting-label">Time</label>
+              <span class="setting-desc">Total: <span id="cdTotalText" class="cd-total">00:10:00</span></span>
+            </div>
+            <div>
+              <div class="cd-time-inputs">
+                <div class="number-input-wrap"><input type="number" id="numCdHours" class="input-number" min="0" max="999" value="0"><span>h</span></div>
+                <div class="number-input-wrap"><input type="number" id="numCdMinutes" class="input-number" min="0" max="59" value="10"><span>m</span></div>
+                <div class="number-input-wrap"><input type="number" id="numCdSeconds" class="input-number" min="0" max="59" value="0"><span>s</span></div>
+              </div>
+              <div class="cd-presets" style="margin-top:10px">
+                <button class="cd-chip" data-sec="300">5 min</button>
+                <button class="cd-chip" data-sec="600">10 min</button>
+                <button class="cd-chip" data-sec="1500">25 min</button>
+                <button class="cd-chip" data-sec="3600">1 hour</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-row" id="rowCdTarget" style="display:none">
+            <div class="setting-info">
+              <label class="setting-label">Target Date &amp; Time</label>
+              <span class="setting-desc">The countdown runs automatically until this moment</span>
+            </div>
+            <input type="datetime-local" id="inpCdTarget" class="input-text">
+          </div>
+
+          <div class="setting-row" id="rowCdActions">
+            <div class="setting-info">
+              <label class="setting-label">Controls</label>
+              <span class="setting-desc">Start, pause or reset the countdown on the desktop</span>
+            </div>
+            <div class="cd-actions">
+              <button id="btnCdStart" class="btn-primary">▶ Start</button>
+              <button id="btnCdPause" class="btn-secondary">⏸ Pause</button>
+              <button id="btnCdReset" class="btn-secondary">↺ Reset</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Sound on Finish</label>
+              <span class="setting-desc">Play a chime when the countdown reaches zero</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkCdSound" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Windows Notification</label>
+              <span class="setting-desc">Show a notification when time is up</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="chkCdNotify" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
       <!-- ================= 6. APPEARANCE TAB ================= -->
       <section id="tab-appearance" class="tab-pane">
         <h2 class="pane-title">Appearance & Themes</h2>
@@ -593,46 +711,72 @@
 
       <!-- ================= 8. ABOUT TAB ================= -->
       <section id="tab-about" class="tab-pane">
-        <h2 class="pane-title">About Wallpaper Clock</h2>
+        <h2 class="pane-title">About Clockly</h2>
         <p class="pane-subtitle">Lightweight, high-performance desktop wallpaper clock for Windows.</p>
 
-        <div class="about-card">
-          <div class="about-icon">⏱</div>
-          <h3>Wallpaper Clock</h3>
-          <p class="about-sub">Version 1.0.0 (Windows x64 Native)</p>
-          <div class="about-specs">
-            <div class="spec-item">
-              <span class="spec-label">Backend</span>
-              <span class="spec-val">Rust (Tauri v2)</span>
-            </div>
-            <div class="spec-item">
-              <span class="spec-label">Layer Tech</span>
-              <span class="spec-val">Windows WorkerW / HWND_BOTTOM</span>
-            </div>
-            <div class="spec-item">
-              <span class="spec-label">Idle RAM</span>
-              <span class="spec-val">&lt; 50 MB</span>
-            </div>
-            <div class="spec-item">
-              <span class="spec-label">Idle CPU</span>
-              <span class="spec-val">~0.0%</span>
-            </div>
-          </div>
-          <p class="about-desc">
-            Embedded directly into the Windows desktop wallpaper surface below desktop icons. Fully click-through, hardware accelerated, zero busy loops, and pauses automatically when fullscreen games run.
-          </p>
-          <div class="shortcuts-box">
-            <h4>Keyboard Shortcuts</h4>
-            <div class="shortcut-row">
-              <kbd>Ctrl + Alt + C</kbd>
-              <span>Toggle Interactive / Edit Mode</span>
-            </div>
-            <div class="shortcut-row">
-              <kbd>Esc</kbd>
-              <span>Exit Edit Mode</span>
+        <div class="about-hero">
+          <img class="about-logo" src="logo.png" alt="Clockly logo">
+          <div class="about-hero-text">
+            <h3>Clockly</h3>
+            <p class="about-tagline">Your wallpaper, now with perfect timing.</p>
+            <div class="about-badges">
+              <span class="about-badge">v1.0.0</span>
+              <span class="about-badge">Windows 10 / 11</span>
+              <span class="about-badge">Rust + Tauri v2</span>
             </div>
           </div>
         </div>
+
+        <h3 class="group-header">What's inside</h3>
+        <div class="about-features">
+          <div class="about-feature"><span>🕒</span><div><b>Digital &amp; Analog Clock</b><small>12/24-hour, date, seconds</small></div></div>
+          <div class="about-feature"><span>🌍</span><div><b>Dual Clock</b><small>Any world timezone</small></div></div>
+          <div class="about-feature"><span>⏱</span><div><b>Stopwatch</b><small>Millisecond laps</small></div></div>
+          <div class="about-feature"><span>🍅</span><div><b>Pomodoro</b><small>Auto-cycle focus &amp; breaks</small></div></div>
+          <div class="about-feature"><span>⏳</span><div><b>Countdown</b><small>Duration or until a date</small></div></div>
+          <div class="about-feature"><span>🎨</span><div><b>Themes &amp; Fonts</b><small>Glass cards, colors, layouts</small></div></div>
+        </div>
+
+        <h3 class="group-header">Performance</h3>
+        <div class="about-card">
+          <div class="about-specs">
+            <div class="spec-item"><span class="spec-label">Backend</span><span class="spec-val">Rust (Tauri v2)</span></div>
+            <div class="spec-item"><span class="spec-label">Layer Tech</span><span class="spec-val">Windows WorkerW / HWND_BOTTOM</span></div>
+            <div class="spec-item"><span class="spec-label">Idle RAM</span><span class="spec-val">&lt; 50 MB</span></div>
+            <div class="spec-item"><span class="spec-label">Idle CPU</span><span class="spec-val">~0.0%</span></div>
+          </div>
+          <p class="about-desc">
+            Embedded directly into the Windows desktop wallpaper surface below desktop icons. Fully click-through, zero busy loops, and it slows down automatically when a fullscreen game or app is running.
+          </p>
+        </div>
+
+        <h3 class="group-header">Keyboard Shortcuts</h3>
+        <div class="about-card">
+          <div class="shortcuts-box">
+            <div class="shortcut-row"><kbd>Ctrl + Alt + C</kbd><span>Toggle Interactive / Edit Mode</span></div>
+            <div class="shortcut-row"><kbd>Esc</kbd><span>Exit Edit Mode</span></div>
+          </div>
+        </div>
+
+        <h3 class="group-header">Project</h3>
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Source Code</label>
+              <span class="setting-desc" id="aboutRepoUrl">https://github.com/golam-mowla/clockly</span>
+            </div>
+            <button id="btnCopyRepo" class="btn-secondary">Copy Link</button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Settings File</label>
+              <span class="setting-desc">Stored locally in your AppData folder, nothing is sent online</span>
+            </div>
+            <button id="btnCopyDataPath" class="btn-secondary">Copy Path</button>
+          </div>
+        </div>
+
+        <p class="about-footer">Made with ♥ using Rust, Tauri &amp; plain HTML/CSS/JS &nbsp;·&nbsp; © 2026 Clockly</p>
       </section>
 
     </main>

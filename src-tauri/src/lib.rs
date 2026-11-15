@@ -14,16 +14,45 @@ use windows_sys::Win32::System::Threading::CreateMutexW;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, MOD_ALT, MOD_CONTROL};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, EnumWindows, FindWindowExW, FindWindowW, GetClassNameW, GetForegroundWindow,
-    GetMessageW, GetSystemMetrics, GetWindowLongPtrW, GetWindowRect, SendMessageTimeoutW,
+    GetMessageW, GetParent, GetSystemMetrics, GetWindowLongPtrW, GetWindowRect, SendMessageTimeoutW,
     SetForegroundWindow, SetParent, SetWindowLongPtrW, SetWindowPos, ShowWindow, TranslateMessage,
     GWL_EXSTYLE, GWL_STYLE, HWND_BOTTOM, MSG, SMTO_NORMAL, SM_CXSCREEN, SM_CYSCREEN,
     SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW,
-    SW_RESTORE, WM_HOTKEY, WS_CHILD, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
-    WS_POPUP,
+    SW_RESTORE, WM_HOTKEY, WS_CAPTION, WS_CHILD, WS_EX_LAYERED, WS_EX_TOOLWINDOW,
+    WS_EX_TRANSPARENT, WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_POPUP, WS_SYSMENU, WS_THICKFRAME,
 };
 
 static IS_INTERACTIVE: AtomicBool = AtomicBool::new(false);
 static CLOCK_HWND: Mutex<Option<usize>> = Mutex::new(None);
+
+// Style bits that make Windows draw a title bar / border around the clock window
+const DECORATION_BITS: isize = (WS_CAPTION | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX) as isize;
+
+/// Keeps the clock window borderless and attached to the desktop.
+/// Removes any title bar that sneaks back in, and re-embeds if the window lost its WorkerW parent
+/// (for example after Explorer restarts or the wallpaper/display changes).
+fn ensure_clock_window(hwnd: HWND) {
+    unsafe {
+        if GetParent(hwnd).is_null() {
+            embed_into_desktop(hwnd);
+            let click_through = !IS_INTERACTIVE.load(Ordering::SeqCst);
+            set_click_through(hwnd, click_through);
+        }
+        let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        if style & DECORATION_BITS != 0 {
+            SetWindowLongPtrW(hwnd, GWL_STYLE, style & !DECORATION_BITS);
+            SetWindowPos(
+                hwnd,
+                std::ptr::null_mut(),
+                0,
+                0,
+                GetSystemMetrics(SM_CXSCREEN),
+                GetSystemMetrics(SM_CYSCREEN),
+                SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+            );
+        }
+    }
+}
 
 fn to_wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(std::iter::once(0)).collect()
@@ -95,7 +124,7 @@ pub fn embed_into_desktop(hwnd: HWND) -> bool {
         if !target.is_null() {
             SetParent(hwnd, target);
             let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-            SetWindowLongPtrW(hwnd, GWL_STYLE, (style & !(WS_POPUP as isize)) | (WS_CHILD as isize));
+            SetWindowLongPtrW(hwnd, GWL_STYLE, (style & !(WS_POPUP as isize) & !DECORATION_BITS) | (WS_CHILD as isize));
             let cx = GetSystemMetrics(SM_CXSCREEN);
             let cy = GetSystemMetrics(SM_CYSCREEN);
             SetWindowPos(
@@ -140,6 +169,8 @@ pub fn set_click_through(hwnd: HWND, click_through: bool) {
             (ex_style & !(WS_EX_TRANSPARENT as isize)) | (WS_EX_LAYERED as isize) | (WS_EX_TOOLWINDOW as isize)
         };
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new_style);
+        let cur_style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        SetWindowLongPtrW(hwnd, GWL_STYLE, cur_style & !DECORATION_BITS);
         SetWindowPos(
             hwnd,
             std::ptr::null_mut(),
@@ -182,7 +213,7 @@ fn check_fullscreen_active(clock_hwnd: usize) -> bool {
 fn get_autostart() -> bool {
     unsafe {
         let subkey = to_wide("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
-        let val_name = to_wide("WallpaperClock");
+        let val_name = to_wide("Clockly");
         let mut hkey: HKEY = std::ptr::null_mut();
         if RegOpenKeyExW(HKEY_CURRENT_USER, subkey.as_ptr(), 0, KEY_READ, &mut hkey) == 0 {
             let mut buf = [0u16; 512];
@@ -207,12 +238,15 @@ fn get_autostart() -> bool {
 fn set_autostart(enable: bool) -> Result<(), String> {
     unsafe {
         let subkey = to_wide("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
-        let val_name = to_wide("WallpaperClock");
+        let val_name = to_wide("Clockly");
         let mut hkey: HKEY = std::ptr::null_mut();
         let res = RegOpenKeyExW(HKEY_CURRENT_USER, subkey.as_ptr(), 0, KEY_WRITE, &mut hkey);
         if res != 0 {
             return Err(format!("Failed to open registry key: {}", res));
         }
+
+        let legacy_name = to_wide("WallpaperClock");
+        let _ = RegDeleteValueW(hkey, legacy_name.as_ptr());
 
         if enable {
             let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
@@ -258,7 +292,7 @@ fn is_interactive() -> bool {
 #[tauri::command]
 fn get_appdata_path() -> Result<String, String> {
     let app_dir = dirs_fallback().ok_or_else(|| "Could not locate app data directory".to_string())?;
-    let path = app_dir.join("WallpaperClock");
+    let path = app_dir.join("Clockly");
     if !path.exists() {
         std::fs::create_dir_all(&path).map_err(|e| e.to_string())?;
     }
@@ -268,18 +302,24 @@ fn get_appdata_path() -> Result<String, String> {
 #[tauri::command]
 fn load_settings() -> Result<String, String> {
     let app_dir = dirs_fallback().ok_or_else(|| "Could not locate app data directory".to_string())?;
-    let file = app_dir.join("WallpaperClock").join("settings.json");
+    let file = app_dir.join("Clockly").join("settings.json");
     if file.exists() {
         std::fs::read_to_string(&file).map_err(|e| e.to_string())
     } else {
-        Ok("{}".to_string())
+        // Migrate settings from the old "Wallpaper Clock" folder if present
+        let legacy = app_dir.join("WallpaperClock").join("settings.json");
+        if legacy.exists() {
+            std::fs::read_to_string(&legacy).map_err(|e| e.to_string())
+        } else {
+            Ok("{}".to_string())
+        }
     }
 }
 
 #[tauri::command]
 fn save_settings(settings_json: String) -> Result<(), String> {
     let app_dir = dirs_fallback().ok_or_else(|| "Could not locate app data directory".to_string())?;
-    let dir = app_dir.join("WallpaperClock");
+    let dir = app_dir.join("Clockly");
     if !dir.exists() {
         std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     }
@@ -340,10 +380,10 @@ fn dirs_fallback() -> Option<std::path::PathBuf> {
 pub fn run() {
     // 1. Single instance check via Win32 named mutex
     unsafe {
-        let mutex_name = to_wide("WallpaperClock_SingleInstance_Mutex_AGY");
+        let mutex_name = to_wide("Clockly_SingleInstance_Mutex");
         let _mutex = CreateMutexW(std::ptr::null(), 1, mutex_name.as_ptr());
         if GetLastError() == ERROR_ALREADY_EXISTS {
-            let settings_title = to_wide("Wallpaper Clock - Settings");
+            let settings_title = to_wide("Clockly - Settings");
             let existing_wnd = FindWindowW(std::ptr::null(), settings_title.as_ptr());
             if !existing_wnd.is_null() {
                 ShowWindow(existing_wnd, SW_RESTORE);
@@ -373,7 +413,7 @@ pub fn run() {
             };
             let autostart_i = MenuItemBuilder::with_id("autostart", autostart_label).build(app)?;
             let sep3 = MenuItemBuilder::with_id("sep3", "---").build(app)?;
-            let quit_i = MenuItemBuilder::with_id("quit", "Quit Wallpaper Clock").build(app)?;
+            let quit_i = MenuItemBuilder::with_id("quit", "Quit Clockly").build(app)?;
 
             let tray_menu = MenuBuilder::new(app)
                 .items(&[
@@ -489,6 +529,9 @@ pub fn run() {
                 loop {
                     std::thread::sleep(std::time::Duration::from_secs(2));
                     let clock_h = CLOCK_HWND.lock().ok().and_then(|l| *l).unwrap_or(0);
+                    if clock_h != 0 {
+                        ensure_clock_window(clock_h as HWND);
+                    }
                     let is_fs = check_fullscreen_active(clock_h);
                     if is_fs != was_fullscreen {
                         was_fullscreen = is_fs;
@@ -513,5 +556,5 @@ pub fn run() {
             exit_app,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Wallpaper Clock");
+        .expect("error while running Clockly");
 }

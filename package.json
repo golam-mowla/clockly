@@ -1,5 +1,5 @@
 {
-  "name": "wallpaper-clock",
+  "name": "clockly",
   "version": "1.0.0",
   "description": "Fast, lightweight Windows wallpaper clock desktop app built with Tauri v2",
   "private": true,

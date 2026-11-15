@@ -1,4 +1,4 @@
-// Wallpaper Clock - Settings Window Logic
+// Clockly - Settings Window Logic
 (function () {
   'use strict';
 
@@ -34,7 +34,15 @@
     pomNotification: true,
 
     showCountdown: false,
-    cdDuration: 10,
+    cdMode: 'duration',
+    cdHours: 0,
+    cdMinutes: 10,
+    cdSeconds: 0,
+    cdTarget: '',
+    cdTargetSetAt: 0,
+    cdLabel: 'Countdown',
+    cdSound: true,
+    cdNotify: true,
     showAlarm: false,
     alarmTime: '07:30',
     alarmLabel: 'Wake Up',
@@ -66,6 +74,9 @@
     }
     return Promise.resolve();
   }
+
+  let bus = null;
+  try { bus = new BroadcastChannel('clockly'); } catch (e) { /* unavailable */ }
 
   function emitTauri(event, payload) {
     if (window.__TAURI__ && window.__TAURI__.event && window.__TAURI__.event.emit) {
@@ -124,6 +135,25 @@
   const chkPomAutoCycle = document.getElementById('chkPomAutoCycle');
   const chkPomSound = document.getElementById('chkPomSound');
   const chkPomNotification = document.getElementById('chkPomNotification');
+
+  const chkShowCountdown = document.getElementById('chkShowCountdown');
+  const txtCdLabel = document.getElementById('txtCdLabel');
+  const btnCdModeDur = document.getElementById('btnCdModeDur');
+  const btnCdModeTarget = document.getElementById('btnCdModeTarget');
+  const rowCdDuration = document.getElementById('rowCdDuration');
+  const rowCdTarget = document.getElementById('rowCdTarget');
+  const rowCdActions = document.getElementById('rowCdActions');
+  const numCdHours = document.getElementById('numCdHours');
+  const numCdMinutes = document.getElementById('numCdMinutes');
+  const numCdSeconds = document.getElementById('numCdSeconds');
+  const inpCdTarget = document.getElementById('inpCdTarget');
+  const cdTotalText = document.getElementById('cdTotalText');
+  const chkCdSound = document.getElementById('chkCdSound');
+  const chkCdNotify = document.getElementById('chkCdNotify');
+  const btnCdStart = document.getElementById('btnCdStart');
+  const btnCdPause = document.getElementById('btnCdPause');
+  const btnCdReset = document.getElementById('btnCdReset');
+  const btnCdHero = document.getElementById('btnCdHero');
 
   const selFontFamily = document.getElementById('selFontFamily');
   const rowCustomFont = document.getElementById('rowCustomFont');
@@ -190,6 +220,23 @@
     chkPomSound.checked = !!settings.pomSound;
     chkPomNotification.checked = !!settings.pomNotification;
 
+    // Countdown
+    chkShowCountdown.checked = !!settings.showCountdown;
+    txtCdLabel.value = settings.cdLabel || '';
+    const isTarget = settings.cdMode === 'target';
+    btnCdModeDur.classList.toggle('active', !isTarget);
+    btnCdModeTarget.classList.toggle('active', isTarget);
+    rowCdDuration.style.display = isTarget ? 'none' : 'flex';
+    rowCdActions.style.display = isTarget ? 'none' : 'flex';
+    rowCdTarget.style.display = isTarget ? 'flex' : 'none';
+    numCdHours.value = settings.cdHours || 0;
+    numCdMinutes.value = settings.cdMinutes || 0;
+    numCdSeconds.value = settings.cdSeconds || 0;
+    inpCdTarget.value = settings.cdTarget || '';
+    chkCdSound.checked = settings.cdSound !== false;
+    chkCdNotify.checked = settings.cdNotify !== false;
+    updateCdTotalText();
+
     selFontFamily.value = settings.fontFamily || 'Inter';
     rowCustomFont.style.display = (selFontFamily.value === 'Custom') ? 'flex' : 'none';
     txtCustomFont.value = settings.customFont || '';
@@ -220,6 +267,7 @@
   // Save & Broadcast changes
   function notifyChange() {
     emitTauri('settings-updated', settings);
+    if (bus) bus.postMessage({ type: 'settings', payload: settings });
     invokeTauri('save_settings', { settingsJson: JSON.stringify(settings) });
   }
 
@@ -353,6 +401,120 @@
     notifyChange();
   });
 
+  // ---- Countdown ----
+  const pad2 = n => String(n).padStart(2, '0');
+  function updateCdTotalText() {
+    const total = (settings.cdHours || 0) * 3600 + (settings.cdMinutes || 0) * 60 + (settings.cdSeconds || 0);
+    cdTotalText.textContent = `${pad2(Math.floor(total / 3600))}:${pad2(Math.floor((total % 3600) / 60))}:${pad2(total % 60)}`;
+  }
+
+  function clampInt(v, min, max) {
+    const n = parseInt(v, 10);
+    return isNaN(n) ? min : Math.max(min, Math.min(max, n));
+  }
+
+  function readCdDuration() {
+    settings.cdHours = clampInt(numCdHours.value, 0, 999);
+    settings.cdMinutes = clampInt(numCdMinutes.value, 0, 59);
+    settings.cdSeconds = clampInt(numCdSeconds.value, 0, 59);
+    updateCdTotalText();
+    notifyChange();
+  }
+
+  function sendCdCommand(cmd) {
+    emitTauri('cd-command', cmd);
+    if (bus) bus.postMessage({ type: 'cd-command', payload: cmd });
+  }
+
+  chkShowCountdown.addEventListener('change', () => {
+    settings.showCountdown = chkShowCountdown.checked;
+    notifyChange();
+  });
+
+  txtCdLabel.addEventListener('input', () => {
+    settings.cdLabel = txtCdLabel.value.trim() || 'Countdown';
+    notifyChange();
+  });
+
+  btnCdModeDur.addEventListener('click', () => {
+    settings.cdMode = 'duration';
+    populateUI();
+    notifyChange();
+  });
+
+  btnCdModeTarget.addEventListener('click', () => {
+    settings.cdMode = 'target';
+    populateUI();
+    notifyChange();
+  });
+
+  [numCdHours, numCdMinutes, numCdSeconds].forEach(el => el.addEventListener('change', () => {
+    readCdDuration();
+    populateUI();
+  }));
+
+  document.querySelectorAll('.cd-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const total = parseInt(chip.getAttribute('data-sec'), 10) || 0;
+      settings.cdHours = Math.floor(total / 3600);
+      settings.cdMinutes = Math.floor((total % 3600) / 60);
+      settings.cdSeconds = total % 60;
+      populateUI();
+      notifyChange();
+    });
+  });
+
+  inpCdTarget.addEventListener('change', () => {
+    settings.cdTarget = inpCdTarget.value;
+    settings.cdTargetSetAt = Date.now();
+    notifyChange();
+  });
+
+  chkCdSound.addEventListener('change', () => {
+    settings.cdSound = chkCdSound.checked;
+    notifyChange();
+  });
+
+  chkCdNotify.addEventListener('change', () => {
+    settings.cdNotify = chkCdNotify.checked;
+    notifyChange();
+  });
+
+  btnCdStart.addEventListener('click', () => {
+    if (!settings.showCountdown) {
+      settings.showCountdown = true;
+      chkShowCountdown.checked = true;
+      notifyChange();
+    }
+    sendCdCommand('start');
+  });
+  btnCdPause.addEventListener('click', () => sendCdCommand('pause'));
+  btnCdReset.addEventListener('click', () => sendCdCommand('reset'));
+
+  // Interactive hourglass: flip + drain demo
+  const heroSvg = btnCdHero.querySelector('.hg');
+  let heroAnim = null;
+  btnCdHero.addEventListener('click', () => {
+    heroSvg.classList.remove('flipping');
+    void heroSvg.getBoundingClientRect();
+    heroSvg.classList.add('flipping');
+    heroSvg.classList.add('running');
+    cancelAnimationFrame(heroAnim);
+    const t0 = performance.now();
+    const dur = 3000;
+    const step = now => {
+      const k = Math.min(1, (now - t0 - 500) / dur);
+      heroSvg.style.setProperty('--p', k < 0 ? 1 : 1 - k);
+      if (now - t0 < dur + 500) {
+        heroAnim = requestAnimationFrame(step);
+      } else {
+        heroSvg.classList.remove('running', 'flipping');
+      }
+    };
+    heroSvg.style.setProperty('--p', 1);
+    heroAnim = requestAnimationFrame(step);
+  });
+
   selFontFamily.addEventListener('change', () => {
     settings.fontFamily = selFontFamily.value;
     rowCustomFont.style.display = (settings.fontFamily === 'Custom') ? 'flex' : 'none';
@@ -452,7 +614,7 @@
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(settings, null, 2));
     const a = document.createElement('a');
     a.setAttribute('href', dataStr);
-    a.setAttribute('download', 'wallpaper-clock-settings.json');
+    a.setAttribute('download', 'clockly-settings.json');
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -515,6 +677,34 @@
     });
   }
 
+  // About tab: copy helpers
+  function copyText(text, btn) {
+    const done = () => {
+      const old = btn.textContent;
+      btn.textContent = 'Copied ✓';
+      setTimeout(() => { btn.textContent = old; }, 1400);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => {});
+    }
+  }
+  const btnCopyRepo = document.getElementById('btnCopyRepo');
+  const btnCopyDataPath = document.getElementById('btnCopyDataPath');
+  btnCopyRepo.addEventListener('click', () => copyText(document.getElementById('aboutRepoUrl').textContent, btnCopyRepo));
+  btnCopyDataPath.addEventListener('click', () => copyText(appDataPathText.textContent, btnCopyDataPath));
+
   init();
+
+  // Pick up changes made elsewhere (e.g. dragged positions) so we never overwrite them with stale data
+  window.addEventListener('focus', () => {
+    invokeTauri('load_settings').then(jsonStr => {
+      if (jsonStr && jsonStr !== '{}') {
+        try {
+          settings = Object.assign({}, defaultSettings, JSON.parse(jsonStr));
+          populateUI();
+        } catch (e) { /* ignore */ }
+      }
+    }).catch(() => {});
+  });
 
 })();

@@ -1,4 +1,4 @@
-// Wallpaper Clock - High-Performance Wallpaper Engine
+// Clockly - High-Performance Wallpaper Engine
 (function () {
   'use strict';
 
@@ -41,7 +41,15 @@
 
     // Countdown & Alarm
     showCountdown: false,
-    cdDuration: 10,
+    cdMode: 'duration', // 'duration' or 'target'
+    cdHours: 0,
+    cdMinutes: 10,
+    cdSeconds: 0,
+    cdTarget: '',
+    cdTargetSetAt: 0,
+    cdLabel: 'Countdown',
+    cdSound: true,
+    cdNotify: true,
     showAlarm: false,
     alarmTime: '07:30',
     alarmLabel: 'Wake Up',
@@ -117,6 +125,11 @@
   const cdTime = document.getElementById('cdTime');
   const cdBtnStart = document.getElementById('cdBtnStart');
   const cdBtnReset = document.getElementById('cdBtnReset');
+  const cdLabelEl = document.getElementById('cdLabel');
+  const cdSub = document.getElementById('cdSub');
+  const cdProgressBar = document.getElementById('cdProgressBar');
+  const cdHourglass = document.getElementById('cdHourglass');
+  const cdControls = document.getElementById('cdControls');
 
   const widgetAlarm = document.getElementById('widgetAlarm');
   const alarmStatusBadge = document.getElementById('alarmStatusBadge');
@@ -313,7 +326,7 @@
         const [aH, aM] = settings.alarmTime.split(':').map(Number);
         if (now.getHours() === aH && now.getMinutes() === aM && curSec === 0) {
           playAlarmSound();
-          showNotification('Wallpaper Clock Alarm', settings.alarmLabel || 'Alarm ringing!');
+          showNotification('Clockly Alarm', settings.alarmLabel || 'Alarm ringing!');
         }
       }
     }
@@ -500,49 +513,176 @@
   });
   pomBtnReset.addEventListener('click', pomReset);
 
-  // Countdown Logic
-  let cdRunning = false;
-  let cdRemaining = 10 * 60;
+  // Countdown Logic (timestamp based, no drift)
+  const CD_IDLE = 'idle', CD_RUN = 'running', CD_PAUSED = 'paused', CD_DONE = 'done';
+  let cdState = CD_IDLE;
+  let cdEndAt = 0;
+  let cdLeftMs = 0;
+  let cdTotalMs = 1;
   let cdTimerId = null;
+  let cdSig = '';
+  let cdSawPositive = false;
+  let cdFiredKey = '';
 
-  function updateCdDisplay() {
-    const m = String(Math.floor(cdRemaining / 60)).padStart(2, '0');
-    const s = String(cdRemaining % 60).padStart(2, '0');
-    cdTime.textContent = `${m}:${s}`;
+  const pad2 = n => String(n).padStart(2, '0');
+
+  function cdIsTarget() { return settings.cdMode === 'target'; }
+
+  function cdTargetMs() {
+    const t = settings.cdTarget ? new Date(settings.cdTarget).getTime() : NaN;
+    return isNaN(t) ? 0 : t;
+  }
+
+  function cdConfigMs() {
+    return ((settings.cdHours || 0) * 3600 + (settings.cdMinutes || 0) * 60 + (settings.cdSeconds || 0)) * 1000;
+  }
+
+  function cdRemaining() {
+    if (cdIsTarget()) {
+      const t = cdTargetMs();
+      return t ? Math.max(0, t - Date.now()) : 0;
+    }
+    if (cdState === CD_RUN) return Math.max(0, cdEndAt - Date.now());
+    return cdLeftMs;
+  }
+
+  function cdFormat(totalSec) {
+    const d = Math.floor(totalSec / 86400);
+    const h = Math.floor((totalSec % 86400) / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    if (d > 0) return `${d}d ${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+    if (h > 0) return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+    return `${pad2(m)}:${pad2(s)}`;
+  }
+
+  function cdRender() {
+    const target = cdIsTarget();
+    const hasTarget = target && cdTargetMs() > 0;
+    const rem = cdRemaining();
+    const finished = target ? (hasTarget && rem <= 0) : cdState === CD_DONE;
+    const running = target ? rem > 0 : cdState === CD_RUN;
+
+    cdTime.textContent = (target && !hasTarget) ? '--:--' : cdFormat(Math.ceil(rem / 1000));
+
+    const p = cdTotalMs > 0 ? Math.max(0, Math.min(1, rem / cdTotalMs)) : 0;
+    cdHourglass.style.setProperty('--p', finished ? 0 : (target && !hasTarget ? 1 : p));
+    cdProgressBar.style.width = `${p * 100}%`;
+    cdHourglass.classList.toggle('running', running && rem > 0);
+    widgetCountdown.classList.toggle('done', finished);
+
+    cdLabelEl.textContent = (settings.cdLabel || 'Countdown').toUpperCase();
+    let sub;
+    if (finished) sub = "Time's up!";
+    else if (target) sub = hasTarget
+      ? 'Until ' + new Date(cdTargetMs()).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : 'Pick a date & time in Settings';
+    else if (cdState === CD_RUN) sub = 'Counting down…';
+    else if (cdState === CD_PAUSED) sub = 'Paused';
+    else sub = 'Ready';
+    if (cdSub.textContent !== sub) cdSub.textContent = sub;
+
+    cdBtnStart.textContent = cdState === CD_RUN ? 'Pause' : (cdState === CD_PAUSED ? 'Resume' : 'Start');
+    cdControls.classList.toggle('hidden', target);
+  }
+
+  function cdFinished() {
+    if (settings.cdSound !== false) { playChime(); setTimeout(playChime, 1400); }
+    if (settings.cdNotify !== false) {
+      showNotification(`${settings.cdLabel || 'Countdown'} finished!`, "Time's up!");
+    }
   }
 
   function cdTick() {
-    if (cdRemaining > 0) {
-      cdRemaining--;
-      updateCdDisplay();
-    } else {
+    const rem = cdRemaining();
+    if (cdIsTarget()) {
+      if (rem > 0) cdSawPositive = true;
+      else if (cdSawPositive && cdFiredKey !== settings.cdTarget) {
+        cdFiredKey = settings.cdTarget;
+        cdFinished();
+      }
+    } else if (cdState === CD_RUN && rem <= 0) {
+      cdState = CD_DONE;
+      cdLeftMs = 0;
+      cdFinished();
+    }
+    cdRender();
+    cdSyncTimer();
+  }
+
+  function cdSyncTimer() {
+    const needTimer = settings.showCountdown &&
+      ((cdIsTarget() && cdTargetMs() > Date.now()) || (!cdIsTarget() && cdState === CD_RUN));
+    if (needTimer && !cdTimerId) {
+      cdTimerId = setInterval(cdTick, 250);
+    } else if (!needTimer && cdTimerId) {
       clearInterval(cdTimerId);
-      cdRunning = false;
-      cdBtnStart.textContent = 'Start';
-      playChime();
-      showNotification('Countdown Finished!', 'Time is up!');
+      cdTimerId = null;
+    }
+  }
+
+  function cdResetState(flip) {
+    cdState = CD_IDLE;
+    if (cdIsTarget()) {
+      const t = cdTargetMs();
+      const base = settings.cdTargetSetAt || Date.now();
+      cdTotalMs = Math.max(t - base, 1);
+    } else {
+      cdTotalMs = Math.max(cdConfigMs(), 1);
+      cdLeftMs = cdConfigMs();
+    }
+    cdRender();
+    cdSyncTimer();
+    if (flip) {
+      cdHourglass.classList.remove('flipping');
+      void cdHourglass.getBoundingClientRect();
+      cdHourglass.classList.add('flipping');
+      setTimeout(() => cdHourglass.classList.remove('flipping'), 850);
+    }
+  }
+
+  function cdStart() {
+    if (cdIsTarget() || cdState === CD_RUN) return;
+    if (cdState === CD_DONE || cdLeftMs <= 0) cdResetState(false);
+    if (cdLeftMs <= 0) return;
+    cdState = CD_RUN;
+    cdEndAt = Date.now() + cdLeftMs;
+    cdRender();
+    cdSyncTimer();
+  }
+
+  function cdPause() {
+    if (cdState !== CD_RUN) return;
+    cdLeftMs = Math.max(0, cdEndAt - Date.now());
+    cdState = CD_PAUSED;
+    cdRender();
+    cdSyncTimer();
+  }
+
+  function cdCommand(cmd) {
+    if (cmd === 'start') cdStart();
+    else if (cmd === 'pause') cdPause();
+    else if (cmd === 'reset') cdResetState(true);
+  }
+
+  // Called from applySettings(): reset if the countdown configuration changed
+  function cdApplyConfig() {
+    const sig = [settings.cdMode, settings.cdHours, settings.cdMinutes, settings.cdSeconds, settings.cdTarget, settings.cdTargetSetAt].join('|');
+    if (sig !== cdSig) {
+      cdSig = sig;
+      cdSawPositive = false;
+      cdFiredKey = '';
+      cdResetState(false);
+    } else {
+      cdRender();
+      cdSyncTimer();
     }
   }
 
   cdBtnStart.addEventListener('click', () => {
-    if (cdRunning) {
-      clearInterval(cdTimerId);
-      cdRunning = false;
-      cdBtnStart.textContent = 'Start';
-    } else {
-      cdRunning = true;
-      cdBtnStart.textContent = 'Pause';
-      cdTimerId = setInterval(cdTick, 1000);
-    }
+    if (cdState === CD_RUN) cdPause(); else cdStart();
   });
-
-  cdBtnReset.addEventListener('click', () => {
-    clearInterval(cdTimerId);
-    cdRunning = false;
-    cdRemaining = (settings.cdDuration || 10) * 60;
-    cdBtnStart.textContent = 'Start';
-    updateCdDisplay();
-  });
+  cdBtnReset.addEventListener('click', () => cdResetState(true));
 
   // Apply Settings to DOM
   function applySettings() {
@@ -645,7 +785,7 @@
     lastMinute = -1;
     updateClock();
     updatePomDisplay();
-    updateCdDisplay();
+    cdApplyConfig();
   }
 
   // Drag and Drop for Edit Mode
@@ -787,6 +927,9 @@
       }
     });
 
+    // Countdown commands from settings window
+    window.__TAURI__.event.listen('cd-command', event => cdCommand(event.payload));
+
     // Toggle edit mode
     window.__TAURI__.event.listen('set-edit-mode', event => {
       setEditMode(!!event.payload);
@@ -810,6 +953,21 @@
       }
     });
   }
+
+  // Fallback channel between the two windows (works even if Tauri events are unavailable)
+  try {
+    const bus = new BroadcastChannel('clockly');
+    bus.onmessage = e => {
+      const msg = e.data;
+      if (!msg) return;
+      if (msg.type === 'settings' && msg.payload) {
+        settings = Object.assign({}, settings, msg.payload);
+        applySettings();
+      } else if (msg.type === 'cd-command') {
+        cdCommand(msg.payload);
+      }
+    };
+  } catch (e) { /* BroadcastChannel unavailable */ }
 
   // Escape key exits edit mode
   window.addEventListener('keydown', e => {
