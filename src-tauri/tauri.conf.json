@@ -13,15 +13,21 @@
     "windows": [
       {
         "label": "main",
-        "title": "Clockly",
+        "title": "",
         "url": "index.html",
-        "fullscreen": true,
         "transparent": true,
         "decorations": false,
         "shadow": false,
         "skipTaskbar": true,
-        "alwaysOnBottom": true,
-        "visible": true
+        "visible": true,
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "focus": false
       },
       {
         "label": "settings",

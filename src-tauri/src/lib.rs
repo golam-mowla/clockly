@@ -16,7 +16,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, EnumWindows, FindWindowExW, FindWindowW, GetClassNameW, GetForegroundWindow,
     GetMessageW, GetParent, GetSystemMetrics, GetWindowLongPtrW, GetWindowRect, SendMessageTimeoutW,
     SetForegroundWindow, SetParent, SetWindowLongPtrW, SetWindowPos, ShowWindow, TranslateMessage,
-    GWL_EXSTYLE, GWL_STYLE, HWND_BOTTOM, MSG, SMTO_NORMAL, SM_CXSCREEN, SM_CYSCREEN,
+    GWL_EXSTYLE, GWL_STYLE, HWND_BOTTOM, WS_EX_APPWINDOW, WS_EX_CLIENTEDGE, WS_EX_DLGMODALFRAME,
+    WS_EX_STATICEDGE, WS_EX_WINDOWEDGE, MSG, SMTO_NORMAL, SM_CXSCREEN, SM_CYSCREEN,
     SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW,
     SW_RESTORE, WM_HOTKEY, WS_CAPTION, WS_CHILD, WS_EX_LAYERED, WS_EX_TOOLWINDOW,
     WS_EX_TRANSPARENT, WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_POPUP, WS_SYSMENU, WS_THICKFRAME,
@@ -27,6 +28,10 @@ static CLOCK_HWND: Mutex<Option<usize>> = Mutex::new(None);
 
 // Style bits that make Windows draw a title bar / border around the clock window
 const DECORATION_BITS: isize = (WS_CAPTION | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX) as isize;
+
+// Extended style bits that draw a frame / edge around the window
+const DECORATION_EX_BITS: isize =
+    (WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_DLGMODALFRAME | WS_EX_STATICEDGE | WS_EX_APPWINDOW) as isize;
 
 /// Keeps the clock window borderless and attached to the desktop.
 /// Removes any title bar that sneaks back in, and re-embeds if the window lost its WorkerW parent
@@ -39,8 +44,10 @@ fn ensure_clock_window(hwnd: HWND) {
             set_click_through(hwnd, click_through);
         }
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-        if style & DECORATION_BITS != 0 {
+        let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+        if style & DECORATION_BITS != 0 || ex_style & DECORATION_EX_BITS != 0 {
             SetWindowLongPtrW(hwnd, GWL_STYLE, style & !DECORATION_BITS);
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_style & !DECORATION_EX_BITS);
             SetWindowPos(
                 hwnd,
                 std::ptr::null_mut(),
@@ -155,14 +162,14 @@ pub fn set_bottom_most(hwnd: HWND) {
             0,
             cx,
             cy,
-            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW,
+            SWP_NOACTIVATE | SWP_SHOWWINDOW,
         );
     }
 }
 
 pub fn set_click_through(hwnd: HWND, click_through: bool) {
     unsafe {
-        let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+        let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) & !DECORATION_EX_BITS;
         let new_style = if click_through {
             ex_style | (WS_EX_TRANSPARENT as isize) | (WS_EX_LAYERED as isize) | (WS_EX_TOOLWINDOW as isize)
         } else {
@@ -328,6 +335,30 @@ fn save_settings(settings_json: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn load_cd_state() -> Result<String, String> {
+    let app_dir = dirs_fallback().ok_or_else(|| "Could not locate app data directory".to_string())?;
+    let file = app_dir.join("Clockly").join("countdown.json");
+    if file.exists() {
+        std::fs::read_to_string(&file).map_err(|e| e.to_string())
+    } else {
+        Ok("{}".to_string())
+    }
+}
+
+#[tauri::command]
+fn save_cd_state(state_json: String) -> Result<(), String> {
+    let app_dir = dirs_fallback().ok_or_else(|| "Could not locate app data directory".to_string())?;
+    let dir = app_dir.join("Clockly");
+    if !dir.exists() {
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    }
+    // write to a temp file first, then rename, so a power cut can't leave a half-written file
+    let tmp = dir.join("countdown.json.tmp");
+    std::fs::write(&tmp, state_json).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, dir.join("countdown.json")).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(win) = app.get_webview_window("settings") {
         let _ = win.show();
@@ -430,7 +461,11 @@ pub fn run() {
                 ])
                 .build()?;
 
-            let _tray = TrayIconBuilder::new()
+            let mut tray_builder = TrayIconBuilder::new().tooltip("Clockly");
+            if let Some(icon) = app.default_window_icon() {
+                tray_builder = tray_builder.icon(icon.clone());
+            }
+            let _tray = tray_builder
                 .menu(&tray_menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(move |app_h, event| match event.id.as_ref() {
@@ -486,7 +521,15 @@ pub fn run() {
                     embed_into_desktop(hwnd as HWND);
                     // Make window click-through initially
                     set_click_through(hwnd as HWND, true);
+                    ensure_clock_window(hwnd as HWND);
                 }
+                // Whenever the window is moved/resized/focused, make sure no title bar came back
+                main_window.on_window_event(|_event| {
+                    let h = CLOCK_HWND.lock().ok().and_then(|l| *l).unwrap_or(0);
+                    if h != 0 {
+                        ensure_clock_window(h as HWND);
+                    }
+                });
             }
 
             // Settings window close interception: hide instead of destroy/exit
@@ -526,11 +569,16 @@ pub fn run() {
             let handle_fs = handle.clone();
             std::thread::spawn(move || {
                 let mut was_fullscreen = false;
+                let mut tick: u32 = 0;
                 loop {
-                    std::thread::sleep(std::time::Duration::from_secs(2));
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                    tick = tick.wrapping_add(1);
                     let clock_h = CLOCK_HWND.lock().ok().and_then(|l| *l).unwrap_or(0);
                     if clock_h != 0 {
                         ensure_clock_window(clock_h as HWND);
+                    }
+                    if tick % 4 != 0 {
+                        continue;
                     }
                     let is_fs = check_fullscreen_active(clock_h);
                     if is_fs != was_fullscreen {
@@ -554,6 +602,8 @@ pub fn run() {
             close_settings_window,
             toggle_clock_window,
             exit_app,
+            load_cd_state,
+            save_cd_state,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Clockly");

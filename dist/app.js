@@ -123,13 +123,10 @@
 
   const widgetCountdown = document.getElementById('widgetCountdown');
   const cdTime = document.getElementById('cdTime');
-  const cdBtnStart = document.getElementById('cdBtnStart');
-  const cdBtnReset = document.getElementById('cdBtnReset');
   const cdLabelEl = document.getElementById('cdLabel');
   const cdSub = document.getElementById('cdSub');
   const cdProgressBar = document.getElementById('cdProgressBar');
   const cdHourglass = document.getElementById('cdHourglass');
-  const cdControls = document.getElementById('cdControls');
 
   const widgetAlarm = document.getElementById('widgetAlarm');
   const alarmStatusBadge = document.getElementById('alarmStatusBadge');
@@ -582,8 +579,51 @@
     else sub = 'Ready';
     if (cdSub.textContent !== sub) cdSub.textContent = sub;
 
-    cdBtnStart.textContent = cdState === CD_RUN ? 'Pause' : (cdState === CD_PAUSED ? 'Resume' : 'Start');
-    cdControls.classList.toggle('hidden', target);
+  }
+
+  // ---- Persistence: keeps the countdown running in real time even while the PC is off ----
+  // (power cut: 10h countdown, 3h passed, PC off for 1h -> comes back with 6h left)
+  let cdReady = false; // stays false until the saved state has been loaded, so defaults never overwrite it
+
+  function cdInvoke(cmd, args) {
+    if (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) {
+      return window.__TAURI__.core.invoke(cmd, args);
+    }
+    return Promise.reject(new Error('no tauri'));
+  }
+
+  function cdPersist() {
+    if (!cdReady || cdIsTarget()) return;
+    let rec;
+    if (cdState === CD_RUN) rec = { sig: cdSig, state: 'running', endAt: cdEndAt, totalMs: cdTotalMs };
+    else if (cdState === CD_PAUSED) rec = { sig: cdSig, state: 'paused', leftMs: cdLeftMs, totalMs: cdTotalMs };
+    else if (cdState === CD_DONE) rec = { sig: cdSig, state: 'done', totalMs: cdTotalMs };
+    else rec = { sig: cdSig, state: 'idle' };
+    cdInvoke('save_cd_state', { stateJson: JSON.stringify(rec) }).catch(() => {});
+  }
+
+  function cdRestore(saved) {
+    if (!saved || cdIsTarget() || saved.sig !== cdSig) return;
+    if (saved.totalMs > 0) cdTotalMs = saved.totalMs;
+    if (saved.state === 'running' && saved.endAt > 0) {
+      if (saved.endAt <= Date.now()) { cdState = CD_DONE; cdLeftMs = 0; }
+      else { cdState = CD_RUN; cdEndAt = saved.endAt; }
+    } else if (saved.state === 'paused' && saved.leftMs > 0) {
+      cdState = CD_PAUSED; cdLeftMs = saved.leftMs;
+    } else if (saved.state === 'done') {
+      cdState = CD_DONE; cdLeftMs = 0;
+    } else {
+      return;
+    }
+    cdRender();
+    cdSyncTimer();
+  }
+
+  function cdLoadSaved() {
+    cdInvoke('load_cd_state')
+      .then(str => { try { cdRestore(JSON.parse(str || '{}')); } catch (e) { /* ignore */ } })
+      .catch(() => {})
+      .then(() => { cdReady = true; });
   }
 
   function cdFinished() {
@@ -604,6 +644,7 @@
     } else if (cdState === CD_RUN && rem <= 0) {
       cdState = CD_DONE;
       cdLeftMs = 0;
+      cdPersist();
       cdFinished();
     }
     cdRender();
@@ -633,6 +674,7 @@
     }
     cdRender();
     cdSyncTimer();
+    cdPersist();
     if (flip) {
       cdHourglass.classList.remove('flipping');
       void cdHourglass.getBoundingClientRect();
@@ -649,6 +691,7 @@
     cdEndAt = Date.now() + cdLeftMs;
     cdRender();
     cdSyncTimer();
+    cdPersist();
   }
 
   function cdPause() {
@@ -657,6 +700,7 @@
     cdState = CD_PAUSED;
     cdRender();
     cdSyncTimer();
+    cdPersist();
   }
 
   function cdCommand(cmd) {
@@ -679,10 +723,6 @@
     }
   }
 
-  cdBtnStart.addEventListener('click', () => {
-    if (cdState === CD_RUN) cdPause(); else cdStart();
-  });
-  cdBtnReset.addEventListener('click', () => cdResetState(true));
 
   // Apply Settings to DOM
   function applySettings() {
@@ -895,7 +935,10 @@
             }
           }
         })
-        .catch(err => console.error('Failed to load settings:', err));
+        .catch(err => console.error('Failed to load settings:', err))
+        .then(cdLoadSaved);
+    } else {
+      cdReady = true;
     }
   }
 
