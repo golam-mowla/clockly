@@ -14,8 +14,8 @@ use windows_sys::Win32::System::Threading::CreateMutexW;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, MOD_ALT, MOD_CONTROL};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, EnumWindows, FindWindowExW, FindWindowW, GetClassNameW, GetForegroundWindow,
-    GetMessageW, GetParent, GetSystemMetrics, GetWindowLongPtrW, GetWindowRect, SendMessageTimeoutW,
-    SetForegroundWindow, SetParent, SetWindowLongPtrW, SetWindowPos, ShowWindow, TranslateMessage,
+    GetMessageW, GetSystemMetrics, GetWindowLongPtrW, GetWindowRect, SendMessageTimeoutW,
+    SetForegroundWindow, SetParent, SetWindowLongPtrW, SetWindowPos, SetWindowTextW, ShowWindow, TranslateMessage,
     GWL_EXSTYLE, GWL_STYLE, HWND_BOTTOM, WS_BORDER, WS_DLGFRAME, WS_EX_CLIENTEDGE, WS_EX_DLGMODALFRAME,
     WS_EX_STATICEDGE, WS_EX_WINDOWEDGE, MSG, SMTO_NORMAL, SM_CXSCREEN, SM_CYSCREEN,
     SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW,
@@ -90,19 +90,15 @@ fn apply_dwm_borderless(hwnd: HWND) {
 }
 
 /// Keeps the clock window borderless and attached to the desktop.
-/// Removes any title bar that sneaks back in, and re-embeds if the window lost its WorkerW parent
-/// (for example after Explorer restarts or the wallpaper/display changes).
+/// Removes any title bar that sneaks back in, hides Tauri drag borders,
+/// and re-embeds if the window lost its WorkerW parent.
 fn ensure_clock_window(hwnd: HWND) {
     unsafe {
-        if GetParent(hwnd).is_null() {
-            embed_into_desktop(hwnd);
-            let click_through = !IS_INTERACTIVE.load(Ordering::SeqCst);
-            set_click_through(hwnd, click_through);
-        }
+        SetWindowTextW(hwnd, to_wide("").as_ptr());
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
         let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-        if style & DECORATION_BITS != 0 || ex_style & DECORATION_EX_BITS != 0 {
-            SetWindowLongPtrW(hwnd, GWL_STYLE, style & !DECORATION_BITS);
+        if style & DECORATION_BITS != 0 || ex_style & DECORATION_EX_BITS != 0 || (style & (WS_POPUP as isize) == 0) {
+            SetWindowLongPtrW(hwnd, GWL_STYLE, (style & !DECORATION_BITS) | (WS_POPUP as isize));
             SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_style & !DECORATION_EX_BITS);
             SetWindowPos(
                 hwnd,
@@ -115,6 +111,11 @@ fn ensure_clock_window(hwnd: HWND) {
             );
         }
         apply_dwm_borderless(hwnd);
+        let resize_class = to_wide("TAURI_DRAG_RESIZE_BORDERS");
+        let resize_border = FindWindowExW(hwnd, std::ptr::null_mut(), resize_class.as_ptr(), std::ptr::null());
+        if !resize_border.is_null() {
+            ShowWindow(resize_border, 0);
+        }
     }
 }
 
@@ -124,6 +125,8 @@ fn to_wide(s: &str) -> Vec<u16> {
 
 pub fn embed_into_desktop(hwnd: HWND) -> bool {
     unsafe {
+        SetWindowTextW(hwnd, to_wide("").as_ptr());
+
         let progman = FindWindowW(to_wide("Progman").as_ptr(), std::ptr::null());
         if progman.is_null() {
             set_bottom_most(hwnd);
@@ -134,7 +137,7 @@ pub fn embed_into_desktop(hwnd: HWND) -> bool {
         SendMessageTimeoutW(
             progman,
             0x052C,
-            0x0000000D,
+            0,
             0,
             SMTO_NORMAL,
             1000,
@@ -165,7 +168,13 @@ pub fn embed_into_desktop(hwnd: HWND) -> bool {
                         std::ptr::null(),
                     );
                     if !workerw.is_null() {
-                        (*data_ptr).workerw = workerw;
+                        let mut rect: RECT = std::mem::zeroed();
+                        GetWindowRect(workerw, &mut rect);
+                        let w = rect.right - rect.left;
+                        let h = rect.bottom - rect.top;
+                        if w >= GetSystemMetrics(SM_CXSCREEN) && h >= GetSystemMetrics(SM_CYSCREEN) {
+                            (*data_ptr).workerw = workerw;
+                        }
                     }
                 }
                 1
@@ -174,21 +183,10 @@ pub fn embed_into_desktop(hwnd: HWND) -> bool {
 
         EnumWindows(Some(enum_windows_proc), &mut data as *mut SearchData as isize);
 
-        let target = if !data.workerw.is_null() {
-            data.workerw
-        } else {
-            FindWindowExW(
-                std::ptr::null_mut(),
-                std::ptr::null_mut(),
-                to_wide("WorkerW").as_ptr(),
-                std::ptr::null(),
-            )
-        };
-
-        if !target.is_null() {
-            SetParent(hwnd, target);
+        if !data.workerw.is_null() {
+            SetParent(hwnd, data.workerw);
             let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-            SetWindowLongPtrW(hwnd, GWL_STYLE, (style & !(WS_POPUP as isize) & !DECORATION_BITS) | (WS_CHILD as isize));
+            SetWindowLongPtrW(hwnd, GWL_STYLE, (style & !DECORATION_BITS) | (WS_POPUP as isize) | (WS_CHILD as isize));
             let cx = GetSystemMetrics(SM_CXSCREEN);
             let cy = GetSystemMetrics(SM_CYSCREEN);
             SetWindowPos(
@@ -211,6 +209,10 @@ pub fn embed_into_desktop(hwnd: HWND) -> bool {
 
 pub fn set_bottom_most(hwnd: HWND) {
     unsafe {
+        SetParent(hwnd, std::ptr::null_mut());
+        SetWindowTextW(hwnd, to_wide("").as_ptr());
+        let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        SetWindowLongPtrW(hwnd, GWL_STYLE, (style & !DECORATION_BITS & !(WS_CHILD as isize)) | (WS_POPUP as isize));
         let cx = GetSystemMetrics(SM_CXSCREEN);
         let cy = GetSystemMetrics(SM_CYSCREEN);
         SetWindowPos(
@@ -220,7 +222,7 @@ pub fn set_bottom_most(hwnd: HWND) {
             0,
             cx,
             cy,
-            SWP_NOACTIVATE | SWP_SHOWWINDOW,
+            SWP_NOACTIVATE | SWP_FRAMECHANGED | SWP_SHOWWINDOW,
         );
         apply_dwm_borderless(hwnd);
     }
@@ -236,7 +238,7 @@ pub fn set_click_through(hwnd: HWND, click_through: bool) {
         };
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new_style);
         let cur_style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-        SetWindowLongPtrW(hwnd, GWL_STYLE, cur_style & !DECORATION_BITS);
+        SetWindowLongPtrW(hwnd, GWL_STYLE, (cur_style & !DECORATION_BITS) | (WS_POPUP as isize));
         apply_dwm_borderless(hwnd);
         SetWindowPos(
             hwnd,
@@ -576,6 +578,9 @@ pub fn run() {
                     let hwnd = hwnd_raw.0 as usize;
                     if let Ok(mut lock) = CLOCK_HWND.lock() {
                         *lock = Some(hwnd);
+                    }
+                    unsafe {
+                        SetWindowTextW(hwnd as HWND, to_wide("").as_ptr());
                     }
                     // Embed into WorkerW behind desktop icons (with fallback to HWND_BOTTOM)
                     embed_into_desktop(hwnd as HWND);

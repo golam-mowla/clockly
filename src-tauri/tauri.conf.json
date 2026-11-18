@@ -13,12 +13,13 @@
     "windows": [
       {
         "label": "main",
-        "title": "Clockly",
+        "title": "",
         "url": "index.html",
         "fullscreen": true,
         "transparent": true,
         "decorations": false,
         "shadow": false,
+        "resizable": false,
         "skipTaskbar": true,
         "alwaysOnBottom": true,
         "visible": true
