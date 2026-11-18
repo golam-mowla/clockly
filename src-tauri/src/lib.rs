@@ -16,7 +16,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, EnumWindows, FindWindowExW, FindWindowW, GetClassNameW, GetForegroundWindow,
     GetMessageW, GetParent, GetSystemMetrics, GetWindowLongPtrW, GetWindowRect, SendMessageTimeoutW,
     SetForegroundWindow, SetParent, SetWindowLongPtrW, SetWindowPos, ShowWindow, TranslateMessage,
-    GWL_EXSTYLE, GWL_STYLE, HWND_BOTTOM, WS_EX_APPWINDOW, WS_EX_CLIENTEDGE, WS_EX_DLGMODALFRAME,
+    GWL_EXSTYLE, GWL_STYLE, HWND_BOTTOM, WS_BORDER, WS_DLGFRAME, WS_EX_CLIENTEDGE, WS_EX_DLGMODALFRAME,
     WS_EX_STATICEDGE, WS_EX_WINDOWEDGE, MSG, SMTO_NORMAL, SM_CXSCREEN, SM_CYSCREEN,
     SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW,
     SW_RESTORE, WM_HOTKEY, WS_CAPTION, WS_CHILD, WS_EX_LAYERED, WS_EX_TOOLWINDOW,
@@ -27,11 +27,67 @@ static IS_INTERACTIVE: AtomicBool = AtomicBool::new(false);
 static CLOCK_HWND: Mutex<Option<usize>> = Mutex::new(None);
 
 // Style bits that make Windows draw a title bar / border around the clock window
-const DECORATION_BITS: isize = (WS_CAPTION | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX) as isize;
+const DECORATION_BITS: isize =
+    (WS_CAPTION | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_BORDER | WS_DLGFRAME) as isize;
 
 // Extended style bits that draw a frame / edge around the window
 const DECORATION_EX_BITS: isize =
-    (WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_DLGMODALFRAME | WS_EX_STATICEDGE | WS_EX_APPWINDOW) as isize;
+    (WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_DLGMODALFRAME | WS_EX_STATICEDGE) as isize;
+
+#[repr(C)]
+#[allow(non_snake_case)]
+struct MARGINS {
+    cxLeftWidth: i32,
+    cxRightWidth: i32,
+    cyTopHeight: i32,
+    cyBottomHeight: i32,
+}
+
+#[link(name = "dwmapi")]
+unsafe extern "system" {
+    fn DwmExtendFrameIntoClientArea(hwnd: HWND, pMarInset: *const MARGINS) -> i32;
+}
+
+/// Strips DWM borders, disables corner margins, and creates an edge-to-edge transparent canvas
+fn apply_dwm_borderless(hwnd: HWND) {
+    unsafe {
+        // Disable rounded corners (DWMWA_WINDOW_CORNER_PREFERENCE = 33, DWMWCP_DONOTROUND = 1)
+        let do_not_round: u32 = 1;
+        windows_sys::Win32::Graphics::Dwm::DwmSetWindowAttribute(
+            hwnd,
+            33, // DWMWA_WINDOW_CORNER_PREFERENCE
+            &do_not_round as *const _ as *const std::ffi::c_void,
+            std::mem::size_of::<u32>() as u32,
+        );
+
+        // Strip DWM border line (DWMWA_BORDER_COLOR = 34, DWMWA_COLOR_NONE = 0xFFFFFFFE)
+        let color_none: u32 = 0xFFFFFFFE;
+        windows_sys::Win32::Graphics::Dwm::DwmSetWindowAttribute(
+            hwnd,
+            34, // DWMWA_BORDER_COLOR
+            &color_none as *const _ as *const std::ffi::c_void,
+            std::mem::size_of::<u32>() as u32,
+        );
+
+        // Set immersive dark mode (DWMWA_USE_IMMERSIVE_DARK_MODE = 20)
+        let dark_mode: u32 = 1;
+        windows_sys::Win32::Graphics::Dwm::DwmSetWindowAttribute(
+            hwnd,
+            20, // DWMWA_USE_IMMERSIVE_DARK_MODE
+            &dark_mode as *const _ as *const std::ffi::c_void,
+            std::mem::size_of::<u32>() as u32,
+        );
+
+        // Extend frame into client area with -1 margins (transparent glass surface without non-client borders)
+        let margins = MARGINS {
+            cxLeftWidth: -1,
+            cxRightWidth: -1,
+            cyTopHeight: -1,
+            cyBottomHeight: -1,
+        };
+        DwmExtendFrameIntoClientArea(hwnd, &margins);
+    }
+}
 
 /// Keeps the clock window borderless and attached to the desktop.
 /// Removes any title bar that sneaks back in, and re-embeds if the window lost its WorkerW parent
@@ -58,6 +114,7 @@ fn ensure_clock_window(hwnd: HWND) {
                 SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
             );
         }
+        apply_dwm_borderless(hwnd);
     }
 }
 
@@ -143,6 +200,7 @@ pub fn embed_into_desktop(hwnd: HWND) -> bool {
                 cy,
                 SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED | SWP_SHOWWINDOW,
             );
+            apply_dwm_borderless(hwnd);
             true
         } else {
             set_bottom_most(hwnd);
@@ -164,6 +222,7 @@ pub fn set_bottom_most(hwnd: HWND) {
             cy,
             SWP_NOACTIVATE | SWP_SHOWWINDOW,
         );
+        apply_dwm_borderless(hwnd);
     }
 }
 
@@ -178,6 +237,7 @@ pub fn set_click_through(hwnd: HWND, click_through: bool) {
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new_style);
         let cur_style = GetWindowLongPtrW(hwnd, GWL_STYLE);
         SetWindowLongPtrW(hwnd, GWL_STYLE, cur_style & !DECORATION_BITS);
+        apply_dwm_borderless(hwnd);
         SetWindowPos(
             hwnd,
             std::ptr::null_mut(),
@@ -523,12 +583,17 @@ pub fn run() {
                     set_click_through(hwnd as HWND, true);
                     ensure_clock_window(hwnd as HWND);
                 }
-                // Whenever the window is moved/resized/focused, make sure no title bar came back
-                main_window.on_window_event(|_event| {
-                    let h = CLOCK_HWND.lock().ok().and_then(|l| *l).unwrap_or(0);
-                    if h != 0 {
-                        ensure_clock_window(h as HWND);
+                // Whenever the window scale, theme, or focus changes, make sure borderless styling persists
+                main_window.on_window_event(|event| match event {
+                    WindowEvent::ScaleFactorChanged { .. }
+                    | WindowEvent::ThemeChanged(_)
+                    | WindowEvent::Focused(_) => {
+                        let h = CLOCK_HWND.lock().ok().and_then(|l| *l).unwrap_or(0);
+                        if h != 0 {
+                            ensure_clock_window(h as HWND);
+                        }
                     }
+                    _ => {}
                 });
             }
 
